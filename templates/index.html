@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bug Detector</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>🛠️ AI Bug Detector</h1>
+    
+    <form method="POST">
+        <textarea name="code" placeholder="Paste your code here...">{{ code if code }}</textarea>
+        <button type="submit">Analyze Code</button>
+    </form>
+    
+    {% if static_bugs %}
+    <div class="results">
+        <h2>⚠️ Basic Checks Found:</h2>
+        <ul>
+            {% for bug in static_bugs %}
+            <li>{{ bug }}</li>
+            {% endfor %}
+        </ul>
+        
+        <h2>🤖 AI Analysis:</h2>
+        <p>{{ ai_analysis }}</p>
+    </div>
+    {% endif %}
+</body>
+</html>
