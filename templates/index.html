@@ -1,29 +1,399 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Bug Detector</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Analyzer</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            font-family: 'Fira Code', monospace;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        button[name="action"][value="analyze"] {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        button[name="action"][value="explain"] {
+            background-color: var(--success);
+            color: white;
+        }
+
+        button[name="action"][value="fix"] {
+            background-color: var(--warning);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .results {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 8px;
+            background-color: white;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .results ul {
+            padding-left: 1.5rem;
+        }
+
+        .results li {
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+
+        .results li:before {
+            content: "•";
+            color: var(--danger);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .ai-response {
+            white-space: pre-wrap;
+            font-family: 'Fira Code', monospace;
+            background-color: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary);
+            margin-top: 1rem;
+            overflow-x: auto;
+        }
+
+        .history {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .history h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--dark);
+        }
+
+        .history-item {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .history-item:hover {
+            background-color: #e2e8f0;
+            border-left-color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 1rem;
+                padding: 1.5rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+
+        /* Loading animation */
+        .loader {
+            display: none;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Badge for severity levels */
+        .severity {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .critical {
+            background-color: #fee2e2;
+            color: var(--danger);
+        }
+
+        .high {
+            background-color: #ffedd5;
+            color: var(--warning);
+        }
+
+        .medium {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+    </style>
 </head>
 <body>
-    <h1>🛠️ AI Bug Detector</h1>
-    
-    <form method="POST">
-        <textarea name="code" placeholder="Paste your code here...">{{ code if code }}</textarea>
-        <button type="submit">Analyze Code</button>
-    </form>
-    
-    {% if static_bugs %}
-    <div class="results">
-        <h2>⚠️ Basic Checks Found:</h2>
-        <ul>
-            {% for bug in static_bugs %}
-            <li>{{ bug }}</li>
-            {% endfor %}
-        </ul>
+    <div class="container">
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v4"></path>
+                <path d="m16.2 7.8 2.9-2.9"></path>
+                <path d="M18 12h4"></path>
+                <path d="m16.2 16.2 2.9 2.9"></path>
+                <path d="M12 18v4"></path>
+                <path d="m4.9 19.1 2.9-2.9"></path>
+                <path d="M2 12h4"></path>
+                <path d="m4.9 4.9 2.9 2.9"></path>
+            </svg>
+            AI Code Analyzer
+        </h1>
         
-        <h2>🤖 AI Analysis:</h2>
-        <p>{{ ai_analysis }}</p>
+        <form method="POST" id="analysisForm">
+            <textarea name="code" placeholder="Paste your Python, JavaScript, Java, or C/C++ code here..." required>{{ code if code }}</textarea>
+            
+            <div class="button-group">
+                <button type="submit" name="action" value="analyze">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Analyze
+                    <div class="loader" id="analyzeLoader"></div>
+                </button>
+                <button type="submit" name="action" value="explain">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Explain
+                    <div class="loader" id="explainLoader"></div>
+                </button>
+                <button type="submit" name="action" value="fix">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path>
+                        <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon>
+                    </svg>
+                    Fix Code
+                    <div class="loader" id="fixLoader"></div>
+                </button>
+            </div>
+        </form>
+        
+        {% if static_bugs %}
+        <div class="results">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Basic Checks Found
+            </h2>
+            <ul>
+                {% for bug in static_bugs %}
+                <li>
+                    {{ bug }}
+                    {% if "Critical" in bug %}
+                        <span class="severity critical">CRITICAL</span>
+                    {% elif "High" in bug %}
+                        <span class="severity high">HIGH</span>
+                    {% elif "Medium" in bug %}
+                        <span class="severity medium">MEDIUM</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        {% if ai_analysis %}
+        <div class="results">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4"></path>
+                    <path d="m16.2 7.8 2.9-2.9"></path>
+                    <path d="M18 12h4"></path>
+                    <path d="m16.2 16.2 2.9 2.9"></path>
+                    <path d="M12 18v4"></path>
+                    <path d="m4.9 19.1 2.9-2.9"></path>
+                    <path d="M2 12h4"></path>
+                    <path d="m4.9 4.9 2.9 2.9"></path>
+                </svg>
+                AI Analysis
+            </h2>
+            <div class="ai-response">{{ ai_analysis }}</div>
+        </div>
+        {% endif %}
+        
+        {% if history %}
+        <div class="history">
+            <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Recent Analyses
+            </h3>
+            {% for item in history %}
+            <div class="history-item" onclick="document.querySelector('textarea').value = '{{ item }}'">
+                {{ item }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
+
+    <script>
+        // Show loading indicators during form submission
+        const form = document.getElementById('analysisForm');
+        const buttons = {
+            analyze: document.querySelector('button[name="action"][value="analyze"]'),
+            explain: document.querySelector('button[name="action"][value="explain"]'),
+            fix: document.querySelector('button[name="action"][value="fix"]')
+        };
+
+        form.addEventListener('submit', function(e) {
+            const action = e.submitter.value;
+            const loader = document.getElementById(`${action}Loader`);
+            
+            // Show loader for clicked button
+            if (loader) {
+                loader.style.display = 'inline-block';
+                e.submitter.disabled = true;
+            }
+        });
+
+        // Make history items clickable to populate textarea
+        document.querySelectorAll('.history-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelector('textarea').value = this.textContent.trim();
+                document.querySelector('textarea').focus();
+            });
+        });
+    </script>
 </body>
 </html>
