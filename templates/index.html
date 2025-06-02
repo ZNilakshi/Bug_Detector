@@ -90,13 +90,8 @@
             gap: 0.5rem;
         }
 
-        button[name="action"][value="analyze"] {
+        button[name="action"][value="analyze_explain"] {
             background-color: var(--primary);
-            color: white;
-        }
-
-        button[name="action"][value="explain"] {
-            background-color: var(--success);
             color: white;
         }
 
@@ -159,6 +154,17 @@
             border-radius: 6px;
             border-left: 3px solid var(--primary);
             margin-top: 1rem;
+            overflow-x: auto;
+        }
+
+        .fixed-code {
+            white-space: pre-wrap;
+            font-family: 'Fira Code', monospace;
+            background-color: #f0fdf4;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid var(--success);
+            margin-bottom: 1rem;
             overflow-x: auto;
         }
 
@@ -274,23 +280,14 @@
             <textarea name="code" placeholder="Paste your Python, JavaScript, Java, or C/C++ code here..." required>{{ code if code }}</textarea>
             
             <div class="button-group">
-                <button type="submit" name="action" value="analyze">
+                <button type="submit" name="action" value="analyze_explain">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="8" x2="12" y2="12"></line>
                         <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
-                    Analyze
-                    <div class="loader" id="analyzeLoader"></div>
-                </button>
-                <button type="submit" name="action" value="explain">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    Explain
-                    <div class="loader" id="explainLoader"></div>
+                    Analyze & Explain
+                    <div class="loader" id="analyze_explainLoader"></div>
                 </button>
                 <button type="submit" name="action" value="fix">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -330,7 +327,21 @@
         </div>
         {% endif %}
         
-        {% if ai_analysis %}
+        {% if fixed_code %}
+        <div class="results">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path>
+                    <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon>
+                </svg>
+                Fixed Code
+            </h2>
+            <pre class="fixed-code">{{ fixed_code }}</pre>
+            <div class="ai-response">{{ ai_fix }}</div>
+        </div>
+        {% endif %}
+        
+        {% if ai_analysis and not fixed_code %}
         <div class="results">
             <h2>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -370,12 +381,7 @@
     <script>
         // Show loading indicators during form submission
         const form = document.getElementById('analysisForm');
-        const buttons = {
-            analyze: document.querySelector('button[name="action"][value="analyze"]'),
-            explain: document.querySelector('button[name="action"][value="explain"]'),
-            fix: document.querySelector('button[name="action"][value="fix"]')
-        };
-
+        
         form.addEventListener('submit', function(e) {
             const action = e.submitter.value;
             const loader = document.getElementById(`${action}Loader`);

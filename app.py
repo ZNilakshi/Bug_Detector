@@ -21,48 +21,88 @@ def analyze_code(code):
         bugs.append("Possible SQL injection (Critical)")
     return bugs
 
+def clean_markdown(text):
+    """Remove markdown formatting from text"""
+    return text.replace('**', '').replace('*', '').replace('`', '')
+
+def extract_fixed_code(response_text):
+    """Extract the fixed code block from the response"""
+    if "```" in response_text:
+        # Extract code between markdown code blocks
+        parts = response_text.split("```")
+        if len(parts) > 1:
+            # Remove language specifier if present (e.g., ```python)
+            code_block = parts[1].strip()
+            if '\n' in code_block:
+                first_line = code_block.split('\n')[0]
+                if first_line in ['python', 'javascript', 'java', 'c', 'c++']:
+                    return '\n'.join(code_block.split('\n')[1:])
+            return code_block
+    return None  # Return None if no code block found
+
 @app.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "POST":
         code = request.form.get("code", "")
-        action = request.form.get("action", "analyze")
+        action = request.form.get("action", "analyze_explain")
         
-        # Store in history (max 5 items)
+        # Store history (same as before)
         if 'history' not in session:
             session['history'] = []
         session['history'].insert(0, code[:100] + ("..." if len(code) > 100 else ""))
         session['history'] = session['history'][:5]
         
-        # Handle different actions
-        if action == "explain":
+        if action == "fix":
             response = model.generate_content(
-                f"Explain this code in simple terms:\n\n{code}\n"
-                "Focus on what it does, not security issues."
+                f"""STRICT INSTRUCTIONS FOR CODE FIXING:
+                You are a code fixing tool. ONLY return the fixed code.
+                DO NOT include any explanations, analysis, or additional text.
+                PRESERVE all original functionality while fixing security issues.
+                
+                Fix this code (ONLY OUTPUT THE CODE ITSELF):
+                {code}
+                
+                REMEMBER:
+                - NO introductory text
+                - NO section headers
+                - NO explanations
+                - JUST the executable fixed code"""
             )
+            # More aggressive code extraction
+            fixed_code = response.text.strip()
+            if fixed_code.startswith("```") and fixed_code.endswith("```"):
+                fixed_code = fixed_code[fixed_code.find('\n')+1:-3].strip()
             return render_template("index.html",
                                code=code,
-                               ai_analysis=response.text,
+                               fixed_code=fixed_code,
                                history=session.get('history', []))
         
-        elif action == "fix":
+        else:  # Analysis
             response = model.generate_content(
-                f"Fix security issues in this code:\n\n{code}\n"
-                "Show both:\n1. The corrected code\n2. Brief explanations of changes"
+                f"""STRICT INSTRUCTIONS FOR ANALYSIS:
+                You are a code analyzer. ONLY provide analysis text.
+                DO NOT include any code solutions or examples.
+                STRUCTURE OUTPUT AS:
+                
+                CODE PURPOSE: [1-2 sentences]
+                
+                SECURITY ISSUES:
+                - [Issue 1]
+                - [Issue 2]
+                
+                CODE QUALITY:
+                - [Observation 1]
+                - [Observation 2]
+                
+                IMPROVEMENTS:
+                - [Suggestion 1]
+                - [Suggestion 2]
+                
+                Analyze this code (NO CODE OUTPUT ALLOWED):
+                {code}"""
             )
             return render_template("index.html",
                                code=code,
-                               ai_analysis=response.text,
-                               history=session.get('history', []))
-        
-        else:  # Default analysis
-            bugs = analyze_code(code)
-            response = model.generate_content(
-                f"Analyze this code for security issues:\n\n{code}\n"
-                "Format as:\n- [Type] [Severity]: [Description]\n- [Recommendation]"
-            )
-            return render_template("index.html",
-                               code=code,
-                               static_bugs=bugs,
                                ai_analysis=response.text,
                                history=session.get('history', []))
     
