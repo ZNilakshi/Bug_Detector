@@ -26,19 +26,23 @@ def clean_markdown(text):
     return text.replace('**', '').replace('*', '').replace('`', '')
 
 def extract_fixed_code(response_text):
-    """Extract the fixed code block from the response"""
-    if "```" in response_text:
-        # Extract code between markdown code blocks
-        parts = response_text.split("```")
+    """More robust code extraction"""
+    text = response_text.strip()
+    
+    # Case 1: Already clean code
+    if not text.startswith('```') and '\n' in text:
+        return text
+        
+    # Case 2: Markdown code block
+    if '```' in text:
+        parts = text.split('```')
         if len(parts) > 1:
-            # Remove language specifier if present (e.g., ```python)
             code_block = parts[1].strip()
-            if '\n' in code_block:
-                first_line = code_block.split('\n')[0]
-                if first_line in ['python', 'javascript', 'java', 'c', 'c++']:
-                    return '\n'.join(code_block.split('\n')[1:])
+            if code_block.startswith('python'):
+                return '\n'.join(code_block.split('\n')[1:])
             return code_block
-    return None  # Return None if no code block found
+            
+    return text  # fallback # Return None if no code block found
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -54,24 +58,19 @@ def home():
         
         if action == "fix":
             response = model.generate_content(
-                f"""STRICT INSTRUCTIONS FOR CODE FIXING:
-                You are a code fixing tool. ONLY return the fixed code.
-                DO NOT include any explanations, analysis, or additional text.
-                PRESERVE all original functionality while fixing security issues.
-                
-                Fix this code (ONLY OUTPUT THE CODE ITSELF):
-                {code}
-                
-                REMEMBER:
-                - NO introductory text
-                - NO section headers
-                - NO explanations
-                - JUST the executable fixed code"""
-            )
+            f"""STRICTLY FOLLOW THESE INSTRUCTIONS:
+        1. Provide ONLY the complete rewritten/fixed code
+        2. DO NOT include any analysis, explanations, or markdown formatting
+        3. Ensure the code is production-ready with all security fixes
+
+        Problematic code to fix:
+        {code}"""
+        )
             # More aggressive code extraction
             fixed_code = response.text.strip()
             if fixed_code.startswith("```") and fixed_code.endswith("```"):
                 fixed_code = fixed_code[fixed_code.find('\n')+1:-3].strip()
+                
             return render_template("index.html",
                                code=code,
                                fixed_code=fixed_code,
